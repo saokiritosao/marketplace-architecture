@@ -1,0 +1,78 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultTextAlignment center
+skinparam ArrowColor #555555
+skinparam rectangle {
+  BorderColor #4F5B66
+  FontColor #111111
+}
+
+actor "Покупатель" as buyer
+actor "Продавец" as seller
+
+rectangle "Marketplace" as marketplace {
+  rectangle "API Gateway\n[Container: Nginx]\nМаршрутизация запросов и единая точка входа" as gateway #438DD5
+
+  rectangle "User Service\n[Container: FastAPI]\nПользователи, роли, профиль" as users #85BBF0
+  database "User DB\n[PostgreSQL]" as users_db
+
+  rectangle "Catalog Service\n[Container: FastAPI]\nТовары, категории, цены, остатки" as catalog #85BBF0
+  database "Catalog DB\n[PostgreSQL]" as catalog_db
+
+  rectangle "Feed Service\n[Container: Python/FastAPI]\nПерсонализированная лента и ranking" as feed #85BBF0
+  database "Feed DB\n[PostgreSQL / feature store]" as feed_db
+
+  rectangle "Order Service\n[Container: Python/FastAPI]\nЗаказы и их статусы" as orders #85BBF0
+  database "Order DB\n[PostgreSQL]" as orders_db
+
+  rectangle "Payment Service\n[Container: Python/FastAPI]\nПлатежи и их статусы" as payments #85BBF0
+  database "Payment DB\n[PostgreSQL]" as payments_db
+
+  rectangle "Notification Service\n[Container: Python/FastAPI]\nEmail / push-уведомления" as notifications #85BBF0
+  database "Notification DB\n[PostgreSQL]" as notifications_db
+
+  queue "Event Broker\n[RabbitMQ]\nДоменные события" as broker #B3B3B3
+}
+
+rectangle "Платёжный провайдер" as payment_provider #999999
+rectangle "Провайдер уведомлений" as notification_provider #999999
+
+buyer --> gateway : HTTPS/JSON
+seller --> gateway : HTTPS/JSON
+
+gateway --> users : HTTP/JSON
+gateway --> catalog : HTTP/JSON
+gateway --> feed : HTTP/JSON
+gateway --> orders : HTTP/JSON
+
+users --> users_db : read/write
+catalog --> catalog_db : read/write
+feed --> feed_db : read/write
+orders --> orders_db : read/write
+payments --> payments_db : read/write
+notifications --> notifications_db : read/write
+
+orders --> catalog : HTTP/JSON\nпроверка товара и цены
+orders --> payments : HTTP/JSON\nсоздание платежа
+payments --> payment_provider : HTTPS API
+notifications --> notification_provider : HTTPS API
+
+catalog --> broker : ProductChanged
+users --> broker : UserUpdated
+orders --> broker : OrderStatusChanged, OrderCompleted
+payments --> broker : PaymentSucceeded / PaymentFailed
+
+broker --> feed : ProductChanged, UserUpdated, OrderCompleted
+broker --> orders : PaymentSucceeded / PaymentFailed
+broker --> notifications : OrderStatusChanged, PaymentSucceeded / PaymentFailed
+
+legend right
+  |= Элемент |= Значение |
+  | актор | пользователь системы |
+  | синий блок | C4 Container |
+  | цилиндр | хранилище конкретного сервиса |
+  | серый блок | внешняя система / инфраструктура |
+endlegend
+@enduml

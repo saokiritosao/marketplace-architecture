@@ -1,0 +1,74 @@
+digraph MarketplaceC4 {
+  graph [
+    rankdir=LR,
+    bgcolor="white",
+    pad=0.3,
+    nodesep=0.35,
+    ranksep=0.65,
+    fontname="Arial",
+    fontsize=18,
+    labelloc="t",
+    label="C4 Container Diagram — Marketplace"
+  ];
+  node [shape=box, style="rounded,filled", fontname="Arial", fontsize=10, color="#4F5B66", penwidth=1.2, margin="0.14,0.10"];
+  edge [fontname="Arial", fontsize=8.5, color="#555555", fontcolor="#444444", arrowsize=0.7];
+
+  buyer [label="Покупатель\n[Person]", fillcolor="#08427B", fontcolor="white", color="#08427B"];
+  seller [label="Продавец\n[Person]", fillcolor="#08427B", fontcolor="white", color="#08427B"];
+  payment_provider [label="Платёжный провайдер\n[External System]", fillcolor="#999999", fontcolor="white", color="#777777"];
+  notification_provider [label="Провайдер уведомлений\n[External System]", fillcolor="#999999", fontcolor="white", color="#777777"];
+
+  subgraph cluster_marketplace {
+    label="Marketplace [Software System]";
+    color="#999999";
+    penwidth=1.5;
+    style="rounded";
+    fontname="Arial";
+    fontsize=13;
+
+    gateway [label="API Gateway\n[Container: Nginx]\nМаршрутизация запросов и\nединая точка входа", fillcolor="#438DD5", fontcolor="white", color="#2E73A6"];
+
+    users [label="User Service\n[Container: FastAPI]\nПользователи, роли, профиль", fillcolor="#85BBF0"];
+    catalog [label="Catalog Service\n[Container: FastAPI]\nТовары, категории, цены, остатки", fillcolor="#85BBF0"];
+    feed [label="Feed Service\n[Container: Python/FastAPI]\nПерсонализированная лента\nи ranking", fillcolor="#85BBF0"];
+    orders [label="Order Service\n[Container: Python/FastAPI]\nЗаказы и их статусы", fillcolor="#85BBF0"];
+    payments [label="Payment Service\n[Container: Python/FastAPI]\nПлатежи и их статусы", fillcolor="#85BBF0"];
+    notifications [label="Notification Service\n[Container: Python/FastAPI]\nEmail / push-уведомления", fillcolor="#85BBF0"];
+    broker [label="Event Broker\n[RabbitMQ]\nДоменные события", fillcolor="#B3B3B3"];
+
+    users_db [shape=cylinder, label="User DB\n[PostgreSQL]", fillcolor="#D7E9F8"];
+    catalog_db [shape=cylinder, label="Catalog DB\n[PostgreSQL]", fillcolor="#D7E9F8"];
+    feed_db [shape=cylinder, label="Feed DB\n[PostgreSQL / feature store]", fillcolor="#D7E9F8"];
+    orders_db [shape=cylinder, label="Order DB\n[PostgreSQL]", fillcolor="#D7E9F8"];
+    payments_db [shape=cylinder, label="Payment DB\n[PostgreSQL]", fillcolor="#D7E9F8"];
+    notifications_db [shape=cylinder, label="Notification DB\n[PostgreSQL]", fillcolor="#D7E9F8"];
+
+    gateway -> users [label="HTTP/JSON"];
+    gateway -> catalog [label="HTTP/JSON"];
+    gateway -> feed [label="HTTP/JSON"];
+    gateway -> orders [label="HTTP/JSON"];
+
+    users -> users_db [label="read/write"];
+    catalog -> catalog_db [label="read/write"];
+    feed -> feed_db [label="read/write"];
+    orders -> orders_db [label="read/write"];
+    payments -> payments_db [label="read/write"];
+    notifications -> notifications_db [label="read/write"];
+
+    orders -> catalog [label="HTTP/JSON\nтовар и цена"];
+    orders -> payments [label="HTTP/JSON\nсоздать платёж"];
+
+    catalog -> broker [label="ProductChanged", style=dashed];
+    users -> broker [label="UserUpdated", style=dashed];
+    orders -> broker [label="OrderStatusChanged,\nOrderCompleted", style=dashed];
+    payments -> broker [label="PaymentSucceeded / Failed", style=dashed];
+    broker -> feed [label="events", style=dashed];
+    broker -> orders [label="payment events", style=dashed];
+    broker -> notifications [label="order/payment events", style=dashed];
+  }
+
+  buyer -> gateway [label="HTTPS/JSON"];
+  seller -> gateway [label="HTTPS/JSON"];
+  payments -> payment_provider [label="HTTPS API"];
+  notifications -> notification_provider [label="HTTPS API"];
+}
