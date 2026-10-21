@@ -1,7 +1,19 @@
-__pycache__/
-*.py[cod]
-.venv/
 .env
 .idea/
 .vscode/
 .DS_Store
+
+# Go
+bin/
+coverage.out
+
+# Код генерируется из OpenAPI во время сборки
+internal/api/generated/marketplace.gen.go
+
+# Local Python environments and caches
+.venv/
+**/.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
